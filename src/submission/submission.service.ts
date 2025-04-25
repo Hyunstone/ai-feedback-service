@@ -1,0 +1,89 @@
+import { Injectable } from '@nestjs/common';
+import { SubmissionRepository } from './submission.repository';
+import { ISubmission } from './submission.type';
+import { cropRightHalfVideo } from 'src/common/video/video.util';
+import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
+
+@Injectable()
+export class SubmissionService {
+  constructor(private repository: SubmissionRepository) {}
+
+  async handleSubmission(request: ISubmission, video?: Express.Multer.File) {
+    const traceId = crypto.randomUUID();
+    const start = Date.now();
+    try {
+      this.validateSubmission(request);
+      const submission = await this.repository.createSubmission({
+        studentId: request.studentId,
+        componentType: request.componentType,
+        submitText: request.submitText,
+      });
+
+      // 영상 전처리 -> AzureBlobStorage 저장
+      if (video) {
+        const outputPath = cropRightHalfVideo(video);
+        await uploadToAzureBlob(outputPath);
+
+        await this.repository.createSubmissionMedia({
+          submissionId: submission.id,
+          url: outputPath,
+          type: 'video',
+        });
+      }
+
+      // 바로 평가 로직 수행
+      await this.repository.saveAnalysisResult({
+        submissionId: submission.id,
+        score: 87,
+        feedback: '문법 오류 2건 발견. 주제 일관성 양호.',
+        highlight_submit_text: '문법 오류 부분 강조된 텍스트입니다.',
+        highlights: ['grammar error: "a apple" → "an apple"'],
+      });
+
+      await this.repository.createSubmissionLog({
+        traceId,
+        studentId: request.studentId,
+        submissionId: submission.id,
+        isSuccess: true,
+        latency: Date.now() - start,
+        action: 'evaluate',
+      });
+
+      return {
+        result: 'success',
+        traceId,
+        submissionId: submission.id,
+      };
+    } catch (e) {
+      await this.repository.createSubmissionLog({
+        traceId,
+        studentId: request.studentId,
+        submissionId: null,
+        isSuccess: false,
+        latency: Date.now() - start,
+        action: 'evaluate',
+        errorMessage: e.message,
+      });
+
+      return {
+        result: 'failed',
+        traceId,
+        message: e.message,
+      };
+    }
+  }
+
+  private validateSubmission(body: ISubmission) {
+    if (!this.repository.getComponentType(body.componentType)) {
+      throw new Error('잘못된 과제 유형입니다.');
+    }
+    if (
+      !this.repository.getComponentTypeByStudentId(
+        body.studentId,
+        body.componentType,
+      )
+    ) {
+      throw new Error('학생이 작성할 수 없는 과제입니다.');
+    }
+  }
+}
