@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
@@ -7,13 +7,14 @@ import { ISubmission } from './submission.type';
 @Injectable()
 export class SubmissionService {
   constructor(private repository: SubmissionRepository) {}
+  private readonly logger = new Logger(SubmissionService.name);
 
   async handleSubmission(request: ISubmission, video?: Express.Multer.File) {
     const traceId = crypto.randomUUID();
     const start = Date.now();
     try {
       this.validateSubmission(request);
-      const submission = await this.repository.createSubmission({
+      const submission = await this.repository.saveSubmission({
         studentId: request.studentId,
         componentType: request.componentType,
         submitText: request.submitText,
@@ -22,8 +23,29 @@ export class SubmissionService {
       // 영상 전처리 -> AzureBlobStorage 저장
       if (video) {
         const { croppedVideoPath, audioPath } = await processVideoFile(video);
-        await uploadToAzureBlob(croppedVideoPath);
-        await uploadToAzureBlob(audioPath);
+        try {
+          const [croppedUrl, audioUrl] = await Promise.all([
+            uploadToAzureBlob(croppedVideoPath),
+            uploadToAzureBlob(audioPath),
+          ]);
+
+          await Promise.all([
+            this.repository.saveMedia({
+              submissionId: submission.id,
+              type: 'video',
+              url: croppedUrl,
+            }),
+            this.repository.saveMedia({
+              submissionId: submission.id,
+              type: 'audio',
+              url: audioUrl,
+            }),
+          ]);
+
+          this.logger.log('영상, 음성 업로드 및 DB 저장 완료');
+        } catch (err) {
+          this.logger.error('uploading to Azure Blob Storage:', err);
+        }
       }
 
       // 바로 평가 로직 수행
