@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
+import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
 import { ISubmission } from './submission.type';
-import { cropRightHalfVideo } from 'src/common/video/video.util';
-import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 
 @Injectable()
 export class SubmissionService {
@@ -21,14 +21,9 @@ export class SubmissionService {
 
       // 영상 전처리 -> AzureBlobStorage 저장
       if (video) {
-        const outputPath = cropRightHalfVideo(video);
-        await uploadToAzureBlob(outputPath);
-
-        await this.repository.createSubmissionMedia({
-          submissionId: submission.id,
-          url: outputPath,
-          type: 'video',
-        });
+        const { croppedVideoPath, audioPath } = await processVideoFile(video);
+        await uploadToAzureBlob(croppedVideoPath);
+        await uploadToAzureBlob(audioPath);
       }
 
       // 바로 평가 로직 수행
