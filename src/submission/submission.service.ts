@@ -2,11 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
-import { ISubmission } from './submission.type';
+import { ISubmission, toAiFeedBackType } from './submission.type';
+import { AzureOpenAIService } from 'src/common/openai/openai.service';
+import { highlightText } from 'src/common/util/string.util';
 
 @Injectable()
 export class SubmissionService {
-  constructor(private repository: SubmissionRepository) {}
+  constructor(
+    private readonly openaiService: AzureOpenAIService,
+    private repository: SubmissionRepository,
+  ) {}
   private readonly logger = new Logger(SubmissionService.name);
 
   async handleSubmission(request: ISubmission, video?: Express.Multer.File) {
@@ -48,7 +53,19 @@ export class SubmissionService {
         }
       }
 
-      // 바로 평가 로직 수행
+      // TODO: prompt 수정
+      const chat = await this.openaiService.chat([
+        {
+          role: 'user',
+          content: `학생 ${request.studentId}의 ${request.componentType} 과제에 대한 평가를 요청합니다. ${request.submitText}`,
+        },
+      ]);
+      const feedback = toAiFeedBackType(chat);
+      const highlightResult = highlightText(
+        request.submitText,
+        feedback.highlights,
+      );
+
       await this.repository.saveAnalysisResult({
         submissionId: submission.id,
         score: 87,
