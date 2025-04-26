@@ -11,6 +11,27 @@ export interface AiFeedBackType {
   highlights: string[];
 }
 
+export interface LogIdProperites {
+  traceId: string;
+  studentId: number;
+  submissionId: number;
+  startTime: number;
+}
+
+export function toLogIdProperties(
+  traceId: string,
+  studentId: number,
+  submissionId: number,
+  startTime: number,
+): LogIdProperites {
+  return {
+    traceId,
+    studentId,
+    submissionId,
+    startTime,
+  };
+}
+
 export function toAiFeedBackType(chat: string): AiFeedBackType {
   const lines = chat.split('\n');
   const score = parseInt(lines[0].split(':')[1].trim());

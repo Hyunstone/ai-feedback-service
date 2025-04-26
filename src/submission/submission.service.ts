@@ -1,8 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
-import { ISubmission, toAiFeedBackType } from './submission.type';
+import {
+  AiFeedBackType,
+  ISubmission,
+  LogIdProperites,
+  toAiFeedBackType,
+  toLogIdProperties,
+} from './submission.type';
 import { AzureOpenAIService } from 'src/common/openai/openai.service';
 import { highlightText } from 'src/common/util/string.util';
 
@@ -25,80 +31,58 @@ export class SubmissionService {
         submitText: request.submitText,
       });
 
-      // 영상 전처리 -> AzureBlobStorage 저장
-      if (video) {
-        const { croppedVideoPath, audioPath } = await processVideoFile(video);
-        try {
-          const [croppedUrl, audioUrl] = await Promise.all([
-            uploadToAzureBlob(croppedVideoPath),
-            uploadToAzureBlob(audioPath),
-          ]);
+      const logIdProperites = toLogIdProperties(
+        traceId,
+        request.studentId,
+        submission.id,
+        start,
+      );
 
-          await Promise.all([
-            this.repository.saveMedia({
-              submissionId: submission.id,
-              type: 'video',
-              url: croppedUrl,
-            }),
-            this.repository.saveMedia({
-              submissionId: submission.id,
-              type: 'audio',
-              url: audioUrl,
-            }),
-          ]);
+      const { videoUrl, audioUrl } = await this.processAndUploadMedia(
+        logIdProperites,
+        video,
+      );
 
-          this.logger.log('영상, 음성 업로드 및 DB 저장 완료');
-        } catch (err) {
-          this.logger.error('uploading to Azure Blob Storage:', err);
-        }
-      }
-
-      // TODO: prompt 수정
-      const chat = await this.openaiService.chat([
-        {
-          role: 'user',
-          content: `학생 ${request.studentId}의 ${request.componentType} 과제에 대한 평가를 요청합니다. ${request.submitText}`,
-        },
-      ]);
-      const feedback = toAiFeedBackType(chat);
+      const feedbackResult = await this.chatFeedback(logIdProperites, request);
       const highlightResult = highlightText(
         request.submitText,
-        feedback.highlights,
+        feedbackResult.highlights,
       );
 
       await this.repository.saveAnalysisResult({
         submissionId: submission.id,
-        score: 87,
-        feedback: '문법 오류 2건 발견. 주제 일관성 양호.',
-        highlight_submit_text: '문법 오류 부분 강조된 텍스트입니다.',
-        highlights: ['grammar error: "a apple" → "an apple"'],
+        score: feedbackResult.score,
+        feedback: feedbackResult.feedback,
+        highlightResult: highlightResult,
+        highlights: feedbackResult.highlights,
       });
 
       await this.repository.createSubmissionLog({
         traceId,
         studentId: request.studentId,
         submissionId: submission.id,
-        isSuccess: true,
         latency: Date.now() - start,
+        isSuccess: true,
         action: 'evaluate',
       });
 
       return {
-        result: 'success',
-        traceId,
-        submissionId: submission.id,
+        result: 'ok',
+        message: null,
+        studentId: request.studentId,
+        studentName: request.studentName,
+        score: feedbackResult.score,
+        feedback: feedbackResult.feedback,
+        highlights: feedbackResult.highlights,
+        submitText: request.submitText,
+        highlighSubmitText: highlightResult,
+        mediaUrl: {
+          video: videoUrl,
+          audio: audioUrl,
+        },
+        apiLatency: Date.now() - start,
       };
     } catch (e) {
-      await this.repository.createSubmissionLog({
-        traceId,
-        studentId: request.studentId,
-        submissionId: null,
-        isSuccess: false,
-        latency: Date.now() - start,
-        action: 'evaluate',
-        errorMessage: e.message,
-      });
-
       return {
         result: 'failed',
         traceId,
@@ -107,6 +91,71 @@ export class SubmissionService {
     }
   }
 
+  protected async chatFeedback(
+    logIdProperites: LogIdProperites,
+    request: ISubmission,
+  ): Promise<AiFeedBackType> {
+    // TODO: prompt 수정
+    try {
+      const chat = await this.openaiService.chat([
+        {
+          role: 'user',
+          content: `학생 ${request.studentId}의 ${request.componentType} 과제에 대한 평가를 요청합니다. ${request.submitText}`,
+        },
+      ]);
+      this.createSubmissionLog(logIdProperites, 'openAI');
+      return toAiFeedBackType(chat);
+    } catch (error) {
+      this.createSubmissionLog(logIdProperites, 'openAI', false, error.message);
+      throw new HttpException(
+        `Azure OpenAI 호출 실패: ${error.response?.data?.error?.message || error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  protected async processAndUploadMedia(
+    logIdProperites: LogIdProperites,
+    video?: Express.Multer.File,
+  ) {
+    if (!video) {
+      return { videoUrl: undefined, audioUrl: undefined };
+    }
+
+    try {
+      const { croppedVideoPath, audioPath } = await processVideoFile(video);
+      const [videoUrl, audioUrl] = await Promise.all([
+        uploadToAzureBlob(croppedVideoPath),
+        uploadToAzureBlob(audioPath),
+      ]);
+
+      await Promise.all([
+        this.repository.saveMedia({
+          submissionId: logIdProperites.submissionId,
+          type: 'video',
+          url: videoUrl,
+        }),
+        this.repository.saveMedia({
+          submissionId: logIdProperites.submissionId,
+          type: 'audio',
+          url: audioUrl,
+        }),
+      ]);
+
+      this.createSubmissionLog(logIdProperites, 'videoUpload');
+      return { videoUrl, audioUrl };
+    } catch (error) {
+      this.createSubmissionLog(
+        logIdProperites,
+        'videoUpload',
+        false,
+        error.message,
+      );
+      throw new Error(`영상 및 음성 파일 처리 중 오류 발생: ${error.message}`);
+    }
+  }
+
+  // TODO: 실패 로깅
   private validateSubmission(body: ISubmission) {
     if (!this.repository.getComponentType(body.componentType)) {
       throw new Error('잘못된 과제 유형입니다.');
@@ -119,5 +168,27 @@ export class SubmissionService {
     ) {
       throw new Error('학생이 작성할 수 없는 과제입니다.');
     }
+  }
+
+  async createSubmissionLog(
+    logIdProperites: LogIdProperites,
+    action: string, // TODO: action constant 화
+    isSuccess?: boolean,
+    errorMessage?: string,
+  ) {
+    this.repository
+      .createSubmissionLog({
+        traceId: logIdProperites.traceId,
+        studentId: logIdProperites.studentId,
+        submissionId: logIdProperites.submissionId,
+        latency: Date.now() - logIdProperites.startTime,
+        isSuccess,
+        action,
+        errorMessage,
+      })
+      .catch((err) => {
+        // TODO: 알림 추가
+        this.logger.error(`SubmissionLog 생성 실패: ${err.message}`);
+      });
   }
 }

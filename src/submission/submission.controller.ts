@@ -19,14 +19,6 @@ export class SubmissionController {
     @UploadedFile() video: Express.Multer.File,
     @Body() request: ISubmission,
   ): Promise<any> {
-    const result = await this.submissionService.handleSubmission(
-      request,
-      video,
-    );
-    return {
-      result: result.result,
-      traceId: result.traceId,
-      submissionId: result.submissionId,
-    };
+    return await this.submissionService.handleSubmission(request, video);
   }
 }

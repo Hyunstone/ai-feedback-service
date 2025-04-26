@@ -24,18 +24,11 @@ export class AzureOpenAIService {
   async chat(
     messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
   ) {
-    try {
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-35-turbo',
-        messages,
-        temperature: 0.7,
-      });
-      return response.choices[0].message.content;
-    } catch (error) {
-      throw new HttpException(
-        `Azure OpenAI 호출 실패: ${error.response?.data?.error?.message || error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-35-turbo',
+      messages,
+      temperature: 0.7,
+    });
+    return response.choices[0].message.content;
   }
 }
