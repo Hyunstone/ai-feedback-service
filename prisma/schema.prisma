@@ -101,11 +101,16 @@ model MediaAnalysis {
 
 model RequestLogs {
   id         BigInt   @id @default(autoincrement())
+  isSuccess  Boolean? @map("is_success")
+  httpStatus Int?     @map("http_status")
+  latency    Int
   method     String
   uri        String
   userAgent  String?  @map("user_agent")
   ipAddress  String?  @map("ip_address")
   createdAt  DateTime @default(now()) @map("created_at")
+
+  submissionLogs SubmissionLogs[]
 
   @@map("request_logs")
 }
@@ -114,6 +119,7 @@ model SubmissionLogs {
   id            BigInt    @id @default(autoincrement())
   traceId       String    @db.Uuid @unique @map("trace_id")
   userId        BigInt?   @map("user_id")
+  requestLogId  BigInt    @map("request_log_id")
   submissionId  BigInt    @map("submissions_id")
   isSuccess     Boolean?
   latency       Int?
@@ -122,6 +128,7 @@ model SubmissionLogs {
   createdAt     DateTime  @default(now()) @map("created_at")
 
   submission    Submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  requestLog    RequestLogs @relation(fields: [requestLogId], references: [id])
 
   @@map("submission_logs")
 }
