@@ -1,0 +1,50 @@
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
+
+@Catch()
+export class GlobalExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionsFilter.name);
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+    this.logger.error(
+      `[${request.method}] ${request.path}`,
+      exception instanceof Error ? exception.stack : '',
+    );
+
+    if (exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const responseBody = exception.getResponse();
+      const message =
+        typeof responseBody === 'string'
+          ? responseBody
+          : Array.isArray((responseBody as any)?.message)
+            ? (responseBody as any).message.join(', ')
+            : ((responseBody as any)?.message ?? 'Unexpected error');
+
+      response.status(status).json({
+        result: 'failed',
+        message,
+      });
+    } else {
+      this.logger.error('Unhandled exception', exception as Error);
+
+      response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        result: 'failed',
+        message:
+          exception instanceof Error && exception.message
+            ? exception.message
+            : 'Internal Server Error',
+      });
+    }
+  }
+}
