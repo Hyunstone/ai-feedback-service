@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: dev-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: devdb
+    ports:
+      - '5432:5432'
+    networks:
+      - prisma-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AZURE_ENDPOINT_URL=${AZURE_ENDPOINT_URL},
+      - AZURE_ENDPINT_KEY=${AZURE_ENDPINT_KEY},
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT},
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION},
+      - AZURE_CONNECTION_STRING=${AZURE_CONNECTION_STRING},
+      - AZURE_CONTAINER_NAME=${AZURE_CONTAINER_NAME},
+    networks:
+      - prisma-network
+
+networks:
+  prisma-network:
+
+volumes:
+  postgres-data:
