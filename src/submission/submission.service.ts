@@ -1,10 +1,17 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
 import {
   AiFeedBackType,
   ISubmission,
+  ISubmissionsQuery,
   LogIdProperites,
   toAiFeedBackType,
   toLogIdProperties,
@@ -96,6 +103,48 @@ export class SubmissionService {
         message: e.message,
       };
     }
+  }
+
+  async findSubmissionResultsByQuery(query: ISubmissionsQuery) {
+    const ALLOWED_SORT_FIELDS = [
+      'id',
+      'studentId',
+      'componentType',
+      'status',
+      'submitText',
+      'createdAt',
+      'updatedAt',
+      'deletedAt',
+    ];
+
+    const page = query.page ?? 1;
+    const size = query.size ?? 20;
+    const { status, studentId, studentName, sort = 'createdAt,DESC' } = query;
+
+    const [sortField, sortOrder] = sort.split(',');
+    if (!ALLOWED_SORT_FIELDS.includes(sortField)) {
+      throw new BadRequestException(`Invalid sort field: ${sortField}`);
+    }
+
+    const safeSortField = ALLOWED_SORT_FIELDS.includes(sortField)
+      ? sortField
+      : 'createdAt';
+    const safeSortOrder = sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const { data, total } = await this.repository.findSubmissionResultsByQuery({
+      page,
+      size,
+      status,
+      studentId,
+      studentName,
+      orderBy: { [safeSortField]: safeSortOrder },
+    });
+
+    return serializedReturn({
+      page: query.page ?? 1,
+      size: query.size ?? 20,
+      total,
+      data,
+    });
   }
 
   protected async chatFeedback(

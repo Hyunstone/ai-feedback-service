@@ -1,4 +1,19 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+
+export const SubmissionStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;
 
 export class ISubmission {
   @IsInt()
@@ -16,6 +31,46 @@ export class ISubmission {
   @IsString()
   @IsNotEmpty()
   submitText: string;
+}
+
+export class ISubmissionsQuery {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  size?: number = 20;
+
+  @IsOptional()
+  @IsString()
+  sort?: string = 'createdAt,DESC';
+
+  @IsOptional()
+  @IsIn(Object.values(SubmissionStatus))
+  status?: (typeof SubmissionStatus)[keyof typeof SubmissionStatus];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  studentId?: number;
+
+  @IsOptional()
+  @IsString()
+  studentName?: string;
+}
+
+export interface FindSubmissionResultsParams {
+  page: number;
+  size: number;
+  status?: string;
+  studentId?: number;
+  studentName?: string;
+  orderBy: Record<string, 'asc' | 'desc'>;
 }
 
 export interface AiFeedBackType {

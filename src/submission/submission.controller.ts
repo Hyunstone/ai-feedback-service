@@ -4,9 +4,11 @@ import {
   Post,
   UseInterceptors,
   UploadedFile,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
-import { ISubmission } from './submission.type';
+import { ISubmission, ISubmissionsQuery } from './submission.type';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('/api/v1/submissions')
@@ -20,5 +22,10 @@ export class SubmissionController {
     @Body() request: ISubmission,
   ): Promise<any> {
     return await this.submissionService.handleSubmission(request, video);
+  }
+
+  @Get()
+  async findSubmissionResults(@Query() query: ISubmissionsQuery) {
+    return this.submissionService.findSubmissionResultsByQuery(query);
   }
 }

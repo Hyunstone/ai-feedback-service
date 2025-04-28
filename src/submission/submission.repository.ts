@@ -1,9 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import { FindSubmissionResultsParams } from './submission.type';
 
 @Injectable()
 export class SubmissionRepository {
   constructor(private prisma: PrismaService) {}
+
+  async findSubmissionResultsByQuery(params: FindSubmissionResultsParams) {
+    const { page, size, status, studentId, studentName, orderBy } = params;
+    const where: any = {};
+
+    if (status) where.status = status;
+    if (studentId) where.studentId = studentId;
+    if (studentName) where.student = { name: { contains: studentName } };
+
+    const [data, total] = await Promise.all([
+      this.prisma.submissions.findMany({
+        where,
+        skip: (page - 1) * size,
+        take: size,
+        orderBy,
+        include: {
+          student: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.submissions.count({ where }),
+    ]);
+
+    return { data, total };
+  }
 
   async getComponentType(componentType: string) {
     return this.prisma.submissionComponentType.findUnique({
