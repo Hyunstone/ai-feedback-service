@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { RevisionService } from './revision.service';
 import { CreateRevisionDto, FindRevisionsQueryDto } from './revision.type';
 
@@ -17,5 +25,10 @@ export class RevisionController {
   @Get()
   async findAllRevisions(@Query() query: FindRevisionsQueryDto) {
     return this.revisionService.findAllRevisions(query);
+  }
+
+  @Get(':id')
+  async findRevisionById(@Param('id', ParseIntPipe) id: number) {
+    return this.revisionService.findRevisionById(id);
   }
 }

@@ -33,4 +33,10 @@ export class RevisionRepository {
   async count() {
     return this.prisma.revisions.count();
   }
+
+  async findById(id: number) {
+    return this.prisma.revisions.findUnique({
+      where: { id },
+    });
+  }
 }

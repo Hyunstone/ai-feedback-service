@@ -69,4 +69,14 @@ export class RevisionService {
       data,
     });
   }
+
+  async findRevisionById(id: number) {
+    const revision = await this.revisionRepository.findById(id);
+
+    if (!revision) {
+      throw new NotFoundException('Revision not found');
+    }
+
+    return serializedReturn(revision);
+  }
 }
