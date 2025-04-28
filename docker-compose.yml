@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:15
-    container_name: dev-postgres
+    container_name: feed-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: devdb
+      POSTGRES_DB: feedback
     ports:
       - '5432:5432'
     networks:
@@ -21,13 +21,13 @@ services:
     depends_on:
       - postgres
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - AZURE_ENDPOINT_URL=${AZURE_ENDPOINT_URL},
-      - AZURE_ENDPINT_KEY=${AZURE_ENDPINT_KEY},
-      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT},
-      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION},
-      - AZURE_CONNECTION_STRING=${AZURE_CONNECTION_STRING},
-      - AZURE_CONTAINER_NAME=${AZURE_CONTAINER_NAME},
+      - DATABASE_URL==postgresql://postgres:postgres@feed-postgres:5432/feedback
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_ENDPINT_KEY=${AZURE_ENDPINT_KEY}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - AZURE_CONNECTION_STRING=${AZURE_CONNECTION_STRING}
+      - AZURE_CONTAINER_NAME=${AZURE_CONTAINER_NAME}
     networks:
       - prisma-network
 

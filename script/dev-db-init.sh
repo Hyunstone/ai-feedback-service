@@ -7,7 +7,7 @@ docker-compose up -d
 
 echo "⏳ [2/4] DB 컨테이너가 준비될 때까지 대기 중..."
 for i in {1..10}; do
-  if docker exec dev-postgres pg_isready -U postgres > /dev/null 2>&1; then
+  if docker exec feed-postgres pg_isready -U postgres > /dev/null 2>&1; then
     echo "✅ DB 컨테이너가 준비되었습니다!"
     break
   fi

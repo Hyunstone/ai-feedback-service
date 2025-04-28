@@ -7,7 +7,7 @@ module.exports = {
 
       // 실행할 스크립트 파일 경로
       // Node.js 파일뿐만 아니라, Bash, Python 등 다른 스크립트도 실행 가능합니다.
-      script: './dist/src/main.js',
+      script: './dist/main.js',
 
       // 현재 작업 디렉토리 (기본값: 현재 디렉토리)
       // 애플리케이션 실행 기준이 되는 경로를 지정합니다.
@@ -32,7 +32,7 @@ module.exports = {
         NODE_ENV: 'production', // 프로덕션 환경
         PORT: 3000, // 프로덕션 포트
         DATABASE_URL: process.env.DATABASE_URL,
-        AZURE_ENDPOINT_URL: process.env.AZURE_ENDPOINT_URL,
+        AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
         AZURE_ENDPINT_KEY: process.env.AZURE_ENDPINT_KEY,
         AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
         AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION,

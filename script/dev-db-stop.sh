@@ -9,16 +9,16 @@ if [ ! -f "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
-echo "🛑 개발용 PostgreSQL 컨테이너 종료 중..."
-docker-compose -f "$COMPOSE_FILE" stop postgres || {
+# 볼륨 삭제 여부 물어보기
+read -p "🧹 로컬 DB 데이터(volume)를 삭제하시겠습니까? (Y/N): " confirm
+confirm=${confirm:-N}  # 입력이 없으면 N으로 설정
+
+echo "🛑 개발용 컨테이너 종료 중..."
+docker-compose -f "$COMPOSE_FILE" down || {
   echo "❌ 컨테이너 종료에 실패했습니다. docker-compose.yml의 서비스 이름을 확인하세요."
   exit 1
 }
 echo "✅ 컨테이너가 정상적으로 종료되었습니다."
-
-# 볼륨 삭제 여부 물어보기
-read -p "🧹 로컬 DB 데이터(volume)를 삭제하시겠습니까? (Y/N): " confirm
-confirm=${confirm:-N}  # 입력이 없으면 N으로 설정
 
 if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
   echo "🧨 볼륨을 삭제합니다..."
@@ -28,5 +28,10 @@ if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
     }
     echo "✅ 볼륨까지 완전히 삭제되었습니다."
 else
-  echo "ℹ️ 볼륨은 유지되었습니다. 다음 실행 시 기존 데이터로 시작됩니다."
+  echo "ℹ️ 볼륨은 유지하고 컨테이너만 종료합니다..."
+  docker-compose -f "$COMPOSE_FILE" down || {
+    echo "❌ 컨테이너 종료에 실패했습니다."
+    exit 1
+  }
+  echo "✅ 컨테이너는 종료되었고 볼륨은 유지되었습니다."
 fi
