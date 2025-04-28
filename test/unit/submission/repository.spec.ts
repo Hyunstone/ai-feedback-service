@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { SubmissionRepository } from 'src/submission/submission.repository';
+import {
+  FindSubmissionResultsParams,
+  SubmissionStatus,
+} from 'src/submission/submission.type';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('SubmissionRepository (Integration Test)', () => {
@@ -165,7 +169,7 @@ describe('SubmissionRepository (Integration Test)', () => {
     });
 
     expect(analysis).not.toBeNull();
-    expect(analysis?.score).toBe(85);
+    expect(analysis.score).toBe(85);
     expect(highlights.length).toBe(2);
     expect(updatedSubmission?.status).toBe('completed');
   });
@@ -206,5 +210,47 @@ describe('SubmissionRepository (Integration Test)', () => {
     expect(dbLog.latency).toBe(200);
     expect(dbLog.isSuccess).toBe(true);
     expect(dbLog.action).toBe('submit');
+  });
+
+  it('findSubmissionResultsByQuery가 정상적으로 조회 결과를 반환한다', async () => {
+    await prisma.submissionComponentType.create({ data: { name: 'homework' } });
+    const student = await prisma.students.create({
+      data: {
+        name: 'Test Student',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    await prisma.submissions.create({
+      data: {
+        studentId: student.id,
+        componentType: 'homework',
+        status: SubmissionStatus.PENDING,
+        submitText: 'Test submission text',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    const query: FindSubmissionResultsParams = {
+      page: 1,
+      size: 10,
+      orderBy: { createdAt: 'desc' },
+    };
+
+    const result = await repository.findSubmissionResultsByQuery(query);
+
+    expect(result.total).toBeGreaterThan(0);
+    expect(result.data.length).toBeGreaterThan(0);
+
+    const submission = result.data[0];
+    expect(submission).toHaveProperty('id');
+    expect(submission).toHaveProperty('studentId');
+    expect(submission).toHaveProperty('componentType');
+    expect(submission).toHaveProperty('status');
+    expect(submission).toHaveProperty('createdAt');
+    expect(submission).toHaveProperty('student');
+    expect(submission.student).toHaveProperty('name', 'Test Student');
   });
 });
