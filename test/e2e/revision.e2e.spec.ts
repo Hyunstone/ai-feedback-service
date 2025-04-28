@@ -221,3 +221,93 @@ describe('Revision Query E2E', () => {
       .expect(200);
   });
 });
+
+describe('Revision Query By ID E2E', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let createdRevisionId: number;
+
+  beforeAll(async () => {
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    await app.init();
+
+    prisma = app.get(PrismaService);
+
+    const student = await prisma.students.create({
+      data: {
+        name: 'Revision Detail Tester',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    await prisma.submissionComponentType.create({
+      data: { name: 'homework' },
+    });
+
+    const submission = await prisma.submissions.create({
+      data: {
+        studentId: student.id,
+        componentType: 'homework',
+        status: 'COMPLETED',
+        submitText: 'Submission for detail',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    const revision = await prisma.revisions.create({
+      data: {
+        submissionId: submission.id,
+        isSuccess: false,
+        createdAt: new Date(),
+      },
+    });
+
+    createdRevisionId = Number(revision.id);
+  });
+
+  afterAll(async () => {
+    await prisma.revisions.deleteMany();
+    await prisma.submissions.deleteMany();
+    await prisma.students.deleteMany();
+    await prisma.submissionComponentType.deleteMany();
+    await app.close();
+  });
+
+  it('정상적으로 revision 상세 조회 성공', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/revision/${createdRevisionId}`)
+      .expect(200);
+
+    expect(res.body).toHaveProperty('id', createdRevisionId);
+    expect(res.body).toHaveProperty('submissionId');
+    expect(res.body).toHaveProperty('isSuccess');
+    expect(res.body).toHaveProperty('createdAt');
+  });
+
+  it('없는 revisionId 조회 시 404 Not Found', async () => {
+    const nonExistId = 9999999;
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/revision/${nonExistId}`)
+      .expect(404);
+
+    expect(res.body.message).toBe('Revision not found');
+  });
+
+  it('revisionId가 숫자가 아니면 400 Bad Request', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/revision/invalid-id')
+      .expect(400);
+
+    expect(res.body.message).toContain('Validation failed');
+  });
+});
