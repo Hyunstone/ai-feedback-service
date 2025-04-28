@@ -13,5 +13,6 @@ import { AzureOpenAIService } from 'src/common/openai/openai.service';
     AzureOpenAIService,
     SubmissionRepository,
   ],
+  exports: [SubmissionRepository],
 })
 export class SubmissionModule {}

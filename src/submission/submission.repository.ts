@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { FindSubmissionResultsParams } from './submission.type';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SubmissionRepository {
@@ -70,6 +71,26 @@ export class SubmissionRepository {
           },
         },
       },
+    });
+  }
+
+  async findSubmissionById(
+    submissionId: number,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    return tx.submissions.findUnique({
+      where: { id: submissionId },
+    });
+  }
+
+  async updateSubmissionStatus(
+    submissionId: number,
+    status: string,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    return tx.submissions.update({
+      where: { id: submissionId },
+      data: { status },
     });
   }
 

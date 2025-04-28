@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SubmissionModule } from './submission/submission.module';
 import { AuthModule } from './auth/auth.module';
+import { RevisionModule } from './revision/revision.module';
 
 @Module({
   imports: [
     AuthModule,
+    RevisionModule,
     SubmissionModule,
     ConfigModule.forRoot({
       isGlobal: true,

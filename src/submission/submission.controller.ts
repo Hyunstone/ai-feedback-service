@@ -1,19 +1,19 @@
 import {
   Body,
   Controller,
-  Post,
-  UseInterceptors,
-  UploadedFile,
   Get,
-  Query,
-  UseGuards,
   Param,
   ParseIntPipe,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { SubmissionService } from './submission.service';
-import { ISubmission, ISubmissionsQuery } from './submission.type';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { SubmissionService } from './submission.service';
+import { ISubmission, ISubmissionsQuery } from './submission.type';
 
 @Controller('/api/v1/submissions')
 export class SubmissionController {

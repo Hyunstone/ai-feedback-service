@@ -6,7 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { AzureOpenAIService } from 'src/common/openai/openai.service';
+import { PrismaService } from 'src/common/prisma/prisma.service';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
+import { serializedReturn } from 'src/common/type/common.mapper';
+import { highlightText } from 'src/common/util/string.util';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
 import {
@@ -17,15 +21,13 @@ import {
   toAiFeedBackType,
   toLogIdProperties,
 } from './submission.type';
-import { AzureOpenAIService } from 'src/common/openai/openai.service';
-import { highlightText } from 'src/common/util/string.util';
-import { serializedReturn } from 'src/common/type/common.mapper';
 
 @Injectable()
 export class SubmissionService {
   constructor(
     private readonly openaiService: AzureOpenAIService,
-    private repository: SubmissionRepository,
+    private readonly repository: SubmissionRepository,
+    private readonly prisma: PrismaService,
   ) {}
   private readonly logger = new Logger(SubmissionService.name);
 
