@@ -34,6 +34,45 @@ export class SubmissionRepository {
     return { data, total };
   }
 
+  async findSubmissionDetail(submissionId: number) {
+    return this.prisma.submissions.findUnique({
+      where: { id: submissionId, deletedAt: null },
+      select: {
+        id: true,
+        componentType: true,
+        status: true,
+        submitText: true,
+        createdAt: true,
+        student: {
+          select: {
+            name: true,
+          },
+        },
+        analysis: {
+          where: { submissionId: submissionId },
+          select: {
+            score: true,
+            feedback: true,
+            highlightSubmitText: true,
+            highlights: {
+              select: {
+                text: true,
+              },
+            },
+          },
+        },
+        media: {
+          where: { submissionId: submissionId },
+          select: {
+            url: true,
+            type: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
+
   async getComponentType(componentType: string) {
     return this.prisma.submissionComponentType.findUnique({
       where: { name: componentType },

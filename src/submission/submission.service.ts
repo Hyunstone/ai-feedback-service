@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { uploadToAzureBlob } from 'src/common/storage/azure.storage';
 import { processVideoFile } from 'src/common/video/video.util';
@@ -145,6 +146,16 @@ export class SubmissionService {
       total,
       data,
     });
+  }
+
+  async findSubmissionDetail(submissionId: number) {
+    const submission = await this.repository.findSubmissionDetail(submissionId);
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+
+    return serializedReturn(submission);
   }
 
   protected async chatFeedback(
