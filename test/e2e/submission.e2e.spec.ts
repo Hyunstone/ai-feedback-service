@@ -1,7 +1,8 @@
-import 'reflect-metadata';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import 'reflect-metadata';
 import { AppModule } from 'src/app.module';
+import { GlobalExceptionsFilter } from 'src/common/exception/exception.filter';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import * as request from 'supertest';
 
@@ -18,6 +19,7 @@ describe('Submissions E2E', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
+    app.useGlobalFilters(new GlobalExceptionsFilter());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -334,7 +336,7 @@ async function getAccessToken(
   student: { name: string },
 ) {
   const response = await request(app.getHttpServer())
-    .post('/v1/auth/login')
+    .post('/api/v1/auth/login')
     .send({ name: student.name })
     .expect(201);
 
