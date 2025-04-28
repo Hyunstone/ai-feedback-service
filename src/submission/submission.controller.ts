@@ -6,11 +6,14 @@ import {
   UploadedFile,
   Get,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
 import { ISubmission, ISubmissionsQuery } from './submission.type';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('/api/v1/submissions')
 export class SubmissionController {
   constructor(private readonly submissionService: SubmissionService) {}
