@@ -17,4 +17,20 @@ export class RevisionRepository {
       },
     });
   }
+
+  async findAll(params: {
+    skip: number;
+    take: number;
+    orderBy: Prisma.RevisionsOrderByWithRelationInput;
+  }) {
+    return this.prisma.revisions.findMany({
+      skip: params.skip,
+      take: params.take,
+      orderBy: params.orderBy,
+    });
+  }
+
+  async count() {
+    return this.prisma.revisions.count();
+  }
 }

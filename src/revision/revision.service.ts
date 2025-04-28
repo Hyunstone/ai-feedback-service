@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { SubmissionStatus } from 'src/submission/submission.type';
-import { CreateRevisionDto } from './revision.type';
-import { RevisionRepository } from './revision.repository';
+import { serializedReturn } from 'src/common/type/common.mapper';
 import { SubmissionRepository } from 'src/submission/submission.repository';
+import { SubmissionStatus } from 'src/submission/submission.type';
+import { RevisionRepository } from './revision.repository';
+import { CreateRevisionDto, FindRevisionsQueryDto } from './revision.type';
 
 @Injectable()
 export class RevisionService {
@@ -38,6 +39,34 @@ export class RevisionService {
         tx,
       );
       await this.revisionRepository.createRevision(Number(submissionId), tx);
+    });
+  }
+
+  async findAllRevisions(query: FindRevisionsQueryDto) {
+    const { page = 1, size = 20, sort = 'createdAt,DESC' } = query;
+    const [sortField, sortOrder] = sort.split(',');
+
+    const safeSortField = ['id', 'createdAt'].includes(sortField)
+      ? sortField
+      : 'createdAt';
+    const safeSortOrder = sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+    const [data, total] = await Promise.all([
+      this.revisionRepository.findAll({
+        skip: (page - 1) * size,
+        take: size,
+        orderBy: {
+          [safeSortField]: safeSortOrder,
+        },
+      }),
+      this.revisionRepository.count(),
+    ]);
+
+    return serializedReturn({
+      page,
+      size,
+      total,
+      data,
     });
   }
 }

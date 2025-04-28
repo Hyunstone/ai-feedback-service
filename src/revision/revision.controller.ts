@@ -1,6 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { RevisionService } from './revision.service';
-import { CreateRevisionDto } from './revision.type';
+import { CreateRevisionDto, FindRevisionsQueryDto } from './revision.type';
 
 @Controller('/api/v1/revision')
 export class RevisionController {
@@ -12,5 +12,10 @@ export class RevisionController {
     return {
       message: 'Revision request submitted successfully',
     };
+  }
+
+  @Get()
+  async findAllRevisions(@Query() query: FindRevisionsQueryDto) {
+    return this.revisionService.findAllRevisions(query);
   }
 }
