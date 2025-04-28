@@ -1,0 +1,123 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/common/prisma/prisma.service';
+
+@Injectable()
+export class SubmissionRepository {
+  constructor(private prisma: PrismaService) {}
+
+  async getComponentType(componentType: string) {
+    return this.prisma.submissionComponentType.findUnique({
+      where: { name: componentType },
+    });
+  }
+
+  async getSubmissionByStudentIdAndComponentType(
+    studentId: number,
+    componentType: string,
+  ) {
+    return this.prisma.submissions.findFirst({
+      where: {
+        studentId: studentId,
+        componentType,
+      },
+    });
+  }
+
+  async saveMedia(submissionId: number, type: string, url: string) {
+    return this.prisma.submissionMedia.create({
+      data: {
+        submissionId,
+        type,
+        url,
+      },
+    });
+  }
+
+  saveSubmission({
+    studentId,
+    componentType,
+    submitText,
+  }: {
+    studentId: number;
+    componentType: string;
+    submitText: string;
+  }) {
+    return this.prisma.submissions.create({
+      data: {
+        studentId,
+        componentType,
+        status: 'processing',
+        submitText,
+      },
+    });
+  }
+
+  saveAnalysisResult({
+    submissionId,
+    score,
+    feedback,
+    highlightResult,
+    highlights,
+  }: {
+    submissionId: number;
+    score: number;
+    feedback: string;
+    highlightResult: string;
+    highlights: string[];
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const analysis = await tx.submissionsAnalysis.create({
+        data: {
+          submissionId,
+          score,
+          feedback,
+          highlightSubmitText: highlightResult,
+        },
+      });
+
+      for (const text of highlights) {
+        await tx.analysisHighlights.create({
+          data: {
+            submissionAnalysisId: analysis.id,
+            text,
+          },
+        });
+      }
+
+      await tx.submissions.update({
+        where: { id: submissionId },
+        data: { status: 'completed' },
+      });
+    });
+  }
+
+  createSubmissionLog({
+    traceId,
+    studentId,
+    submissionId,
+    latency,
+    isSuccess,
+    action,
+    errorMessage,
+  }: {
+    traceId: string;
+    studentId: number;
+    submissionId: number | null;
+    latency: number;
+    isSuccess?: boolean | null;
+    action: string;
+    errorMessage?: string;
+  }) {
+    return this.prisma.submissionLogs.create({
+      data: {
+        traceId,
+        studentId,
+        submissionId,
+        latency,
+        isSuccess,
+        action,
+        errorMessage: errorMessage || null,
+      },
+    });
+  }
+}

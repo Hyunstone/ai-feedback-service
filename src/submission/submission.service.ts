@@ -11,6 +11,7 @@ import {
 } from './submission.type';
 import { AzureOpenAIService } from 'src/common/openai/openai.service';
 import { highlightText } from 'src/common/util/string.util';
+import { serializedReturn } from 'src/common/type/common.mapper';
 
 @Injectable()
 export class SubmissionService {
@@ -24,17 +25,23 @@ export class SubmissionService {
     const traceId = crypto.randomUUID();
     const start = Date.now();
     try {
-      this.validateSubmission(request);
-      const submission = await this.repository.saveSubmission({
-        studentId: request.studentId,
-        componentType: request.componentType,
-        submitText: request.submitText,
-      });
+      this.validateSubmission(
+        request,
+        toLogIdProperties(traceId, request.studentId, -1, start), // submissionId이 존재하지 않기 때문에 -1 처리
+      );
+      const submission = serializedReturn(
+        await this.repository.saveSubmission({
+          studentId: request.studentId,
+          componentType: request.componentType,
+          submitText: request.submitText,
+        }),
+      );
 
+      const submissionId = submission.id;
       const logIdProperites = toLogIdProperties(
         traceId,
         request.studentId,
-        submission.id,
+        submissionId,
         start,
       );
 
@@ -50,7 +57,7 @@ export class SubmissionService {
       );
 
       await this.repository.saveAnalysisResult({
-        submissionId: submission.id,
+        submissionId,
         score: feedbackResult.score,
         feedback: feedbackResult.feedback,
         highlightResult: highlightResult,
@@ -60,13 +67,13 @@ export class SubmissionService {
       await this.repository.createSubmissionLog({
         traceId,
         studentId: request.studentId,
-        submissionId: submission.id,
+        submissionId,
         latency: Date.now() - start,
         isSuccess: true,
         action: 'evaluate',
       });
 
-      return {
+      return serializedReturn({
         result: 'ok',
         message: null,
         studentId: request.studentId,
@@ -81,7 +88,7 @@ export class SubmissionService {
           audio: audioUrl,
         },
         apiLatency: Date.now() - start,
-      };
+      });
     } catch (e) {
       return {
         result: 'failed',
@@ -130,16 +137,16 @@ export class SubmissionService {
       ]);
 
       await Promise.all([
-        this.repository.saveMedia({
-          submissionId: logIdProperites.submissionId,
-          type: 'video',
-          url: videoUrl,
-        }),
-        this.repository.saveMedia({
-          submissionId: logIdProperites.submissionId,
-          type: 'audio',
-          url: audioUrl,
-        }),
+        this.repository.saveMedia(
+          logIdProperites.submissionId,
+          'video',
+          videoUrl,
+        ),
+        this.repository.saveMedia(
+          logIdProperites.submissionId,
+          'audio',
+          audioUrl,
+        ),
       ]);
 
       this.createSubmissionLog(logIdProperites, 'videoUpload');
@@ -155,17 +162,39 @@ export class SubmissionService {
     }
   }
 
-  // TODO: 실패 로깅
-  private validateSubmission(body: ISubmission) {
-    if (!this.repository.getComponentType(body.componentType)) {
-      throw new Error('잘못된 과제 유형입니다.');
+  private async validateSubmission(
+    body: ISubmission,
+    logIdProperites: LogIdProperites,
+  ) {
+    const componentType = await this.repository.getComponentType(
+      body.componentType,
+    );
+    if (!componentType) {
+      const errorMessage = `잘못된 과제 유형입니다.`;
+      this.createSubmissionLog(
+        logIdProperites,
+        'validation',
+        false,
+        errorMessage,
+      );
+      throw new Error(errorMessage);
     }
-    if (
-      !this.repository.getComponentTypeByStudentId(
+
+    const submission = serializedReturn(
+      await this.repository.getSubmissionByStudentIdAndComponentType(
         body.studentId,
         body.componentType,
-      )
-    ) {
+      ),
+    );
+
+    if (!submission) {
+      const errorMessage = '학생이 작성할 수 없는 과제입니다.';
+      this.createSubmissionLog(
+        logIdProperites,
+        'validation',
+        false,
+        errorMessage,
+      );
       throw new Error('학생이 작성할 수 없는 과제입니다.');
     }
   }

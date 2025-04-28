@@ -1,9 +1,9 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   DefaultAzureCredential,
   getBearerTokenProvider,
 } from '@azure/identity';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AzureOpenAI } from 'openai';
 
 @Injectable()
