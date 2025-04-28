@@ -1,7 +1,20 @@
-export interface ISubmission {
+import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+
+export class ISubmission {
+  @IsInt()
+  @IsNotEmpty()
   studentId: number;
+
+  @IsString()
+  @IsNotEmpty()
   studentName: string;
+
+  @IsString()
+  @IsNotEmpty()
   componentType: string;
+
+  @IsString()
+  @IsNotEmpty()
   submitText: string;
 }
 
