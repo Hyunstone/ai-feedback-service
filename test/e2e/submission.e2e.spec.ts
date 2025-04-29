@@ -47,9 +47,9 @@ describe('Submissions E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.page).toBe(1);
-    expect(res.body.size).toBe(10);
-    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.page).toBe(1);
+    expect(res.body.data.size).toBe(10);
+    expect(res.body.data.data.length).toBeGreaterThan(0);
   });
 
   it('status 필터 성공', async () => {
@@ -63,9 +63,9 @@ describe('Submissions E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.data.every((item: any) => item.status === 'PENDING')).toBe(
-      true,
-    );
+    expect(
+      res.body.data.data.every((item: any) => item.status === 'PENDING'),
+    ).toBe(true);
   });
 
   it('studentId 검색 성공', async () => {
@@ -79,8 +79,8 @@ describe('Submissions E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.data.length).toBeGreaterThan(0);
-    expect(res.body.data[0].studentId).toBe(Number(student.id));
+    expect(res.body.data.data).toBeDefined();
+    expect(res.body.data.data[0].studentId).toBe(Number(student.id));
   });
 
   it('studentName 검색 성공', async () => {
@@ -94,8 +94,8 @@ describe('Submissions E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.data.length).toBeGreaterThan(0);
-    expect(res.body.data[0].student.name).toContain('E2E');
+    expect(res.body.data.data).toBeDefined();
+    expect(res.body.data.data[0].student.name).toContain('E2E');
   });
 
   it('sort 파라미터 변경 성공', async () => {
@@ -109,7 +109,7 @@ describe('Submissions E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.data.length).toBeGreaterThan(0);
   });
 
   it('토큰 없이 호출하면 200을 응답하지만 메시지는 Unauthorized를 응답한다', async () => {
@@ -295,28 +295,31 @@ describe('Submission Detail E2E', () => {
       .get(`/api/v1/submissions/${submission.id}`)
       .expect(200);
 
-    expect(res.body).toHaveProperty('id', Number(submission.id));
-    expect(res.body).toHaveProperty('componentType', submission.componentType);
-    expect(res.body).toHaveProperty('status', submission.status);
-    expect(res.body).toHaveProperty('submitText', submission.submitText);
-    expect(res.body).toHaveProperty('createdAt');
-    expect(res.body.student).toHaveProperty('name', student.name);
+    expect(res.body.data).toHaveProperty('id', Number(submission.id));
+    expect(res.body.data).toHaveProperty(
+      'componentType',
+      submission.componentType,
+    );
+    expect(res.body.data).toHaveProperty('status', submission.status);
+    expect(res.body.data).toHaveProperty('submitText', submission.submitText);
+    expect(res.body.data).toHaveProperty('createdAt');
+    expect(res.body.data.student).toHaveProperty('name', student.name);
 
     // analysis 검증
-    if (res.body.analysis) {
-      expect(res.body.analysis).toHaveProperty('score');
-      expect(res.body.analysis).toHaveProperty('feedback');
-      expect(res.body.analysis).toHaveProperty('highlightSubmitText');
-      expect(Array.isArray(res.body.analysis.highlights)).toBe(true);
+    if (res.body.data.analysis) {
+      expect(res.body.data.analysis).toHaveProperty('score');
+      expect(res.body.data.analysis).toHaveProperty('feedback');
+      expect(res.body.data.analysis).toHaveProperty('highlightSubmitText');
+      expect(Array.isArray(res.body.data.analysis.highlights)).toBe(true);
     }
 
     // media 검증
-    if (res.body.media) {
-      expect(Array.isArray(res.body.media)).toBe(true);
-      if (res.body.media.length > 0) {
-        expect(res.body.media[0]).toHaveProperty('url');
-        expect(res.body.media[0]).toHaveProperty('type');
-        expect(res.body.media[0]).toHaveProperty('createdAt');
+    if (res.body.data.media) {
+      expect(Array.isArray(res.body.data.media)).toBe(true);
+      if (res.body.data.media.length > 0) {
+        expect(res.body.data.media[0]).toHaveProperty('url');
+        expect(res.body.data.media[0]).toHaveProperty('type');
+        expect(res.body.data.media[0]).toHaveProperty('createdAt');
       }
     }
   });
@@ -342,5 +345,5 @@ async function getAccessToken(
     .send({ name: student.name })
     .expect(201);
 
-  return response.body.accessToken;
+  return response.body.data.accessToken;
 }

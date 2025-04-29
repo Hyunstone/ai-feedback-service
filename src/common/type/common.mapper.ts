@@ -1,12 +1,4 @@
-type Serialized<T> = T extends bigint
-  ? number
-  : T extends Date
-    ? Date
-    : T extends Array<infer U>
-      ? Serialized<U>[]
-      : T extends object
-        ? { [K in keyof T]: Serialized<T[K]> }
-        : T;
+import { BaseResponse, Serialized } from './common.type';
 
 export function serializedReturn<T>(obj: T): Serialized<T> {
   if (typeof obj === 'bigint') {
@@ -42,4 +34,19 @@ export function convertBigIntToNumber(value: unknown): number | string {
     return Number(value);
   }
   throw new Error(`Expected bigint, got ${typeof value}`);
+}
+
+export function successResponse<T>(data?: T, message = 'ok'): BaseResponse<T> {
+  return {
+    result: 'success',
+    message,
+    data,
+  };
+}
+
+export function failResponse(message = 'bad request'): BaseResponse<any> {
+  return {
+    result: 'failed',
+    message,
+  };
 }

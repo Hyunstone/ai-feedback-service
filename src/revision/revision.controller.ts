@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { RevisionService } from './revision.service';
 import { CreateRevisionDto, FindRevisionsQueryDto } from './revision.type';
+import { successResponse } from 'src/common/type/common.mapper';
 
 @Controller('/api/v1/revision')
 export class RevisionController {
@@ -17,18 +18,16 @@ export class RevisionController {
   @Post()
   async createRevision(@Body() createRevisionDto: CreateRevisionDto) {
     await this.revisionService.createRevision(createRevisionDto);
-    return {
-      message: 'Revision request submitted successfully',
-    };
+    return successResponse();
   }
 
   @Get()
   async findAllRevisions(@Query() query: FindRevisionsQueryDto) {
-    return this.revisionService.findAllRevisions(query);
+    return successResponse(await this.revisionService.findAllRevisions(query));
   }
 
   @Get(':id')
   async findRevisionById(@Param('id', ParseIntPipe) id: number) {
-    return this.revisionService.findRevisionById(id);
+    return successResponse(await this.revisionService.findRevisionById(id));
   }
 }

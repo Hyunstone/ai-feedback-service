@@ -69,7 +69,7 @@ describe('Revision Create E2E', () => {
       .send({ submissionId: Number(submission.id) })
       .expect(201);
 
-    expect(res.body.message).toBe('Revision request submitted successfully');
+    expect(res.body.message).toBe('ok');
 
     const revision = await prisma.revisions.findFirst({
       where: { submissionId: submission.id },
@@ -168,10 +168,10 @@ describe('Revision Query E2E', () => {
       .get('/api/v1/revision')
       .expect(200);
 
-    expect(res.body.page).toBe(1);
-    expect(res.body.size).toBe(20);
-    expect(res.body.total).toBeGreaterThan(0);
-    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.page).toBe(1);
+    expect(res.body.data.size).toBe(20);
+    expect(res.body.data.total).toBeGreaterThan(0);
+    expect(res.body.data.data.length).toBeGreaterThan(0);
   });
 
   it('페이지네이션 정상 동작', async () => {
@@ -179,9 +179,9 @@ describe('Revision Query E2E', () => {
       .get('/api/v1/revision?page=1&size=1')
       .expect(200);
 
-    expect(res.body.page).toBe(1);
-    expect(res.body.size).toBe(1);
-    expect(res.body.data.length).toBeLessThanOrEqual(1);
+    expect(res.body.data.page).toBe(1);
+    expect(res.body.data.size).toBe(1);
+    expect(res.body.data.data.length).toBeLessThanOrEqual(1);
   });
 
   it('정렬 정상 동작 (createdAt ASC)', async () => {
@@ -207,8 +207,8 @@ describe('Revision Query E2E', () => {
       .get('/api/v1/revision?sort=createdAt,ASC')
       .expect(200);
 
-    expect(res.body.data.length).toBeGreaterThan(0);
-    const createdAtList = res.body.data.map((item: any) =>
+    expect(res.body.data.data.length).toBeGreaterThan(0);
+    const createdAtList = res.body.data.data.map((item: any) =>
       new Date(item.createdAt).getTime(),
     );
 
@@ -301,10 +301,10 @@ describe('Revision Query By ID E2E', () => {
       .get(`/api/v1/revision/${createdRevisionId}`)
       .expect(200);
 
-    expect(res.body).toHaveProperty('id', createdRevisionId);
-    expect(res.body).toHaveProperty('submissionId');
-    expect(res.body).toHaveProperty('isSuccess');
-    expect(res.body).toHaveProperty('createdAt');
+    expect(res.body.data).toHaveProperty('id', createdRevisionId);
+    expect(res.body.data).toHaveProperty('submissionId');
+    expect(res.body.data).toHaveProperty('isSuccess');
+    expect(res.body.data).toHaveProperty('createdAt');
   });
 
   it('없는 revisionId 조회 시 200, Not Found를 응답한다', async () => {

@@ -1,5 +1,3 @@
-// src/common/middleware/request-logging.middleware.ts
-
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
