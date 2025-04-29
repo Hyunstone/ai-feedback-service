@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsIn,
@@ -16,49 +17,72 @@ export const SubmissionStatus = {
 } as const;
 
 export class ISubmission {
+  @ApiProperty({ description: '학생 ID' })
   @IsInt()
   @IsNotEmpty()
   studentId: number;
 
+  @ApiProperty({ description: '학생 이름' })
   @IsString()
   @IsNotEmpty()
   studentName: string;
 
+  @ApiProperty({ description: '제출한 과제 타입 (essay, homework 등)' })
   @IsString()
   @IsNotEmpty()
   componentType: string;
 
+  @ApiProperty({ description: '제출한 텍스트' })
   @IsString()
   @IsNotEmpty()
   submitText: string;
 }
 
 export class ISubmissionsQuery {
+  @ApiProperty({ description: '페이지 번호', example: 1, required: false })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  @ApiProperty({
+    description: '페이지당 아이템 수',
+    example: 20,
+    required: false,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   size?: number = 20;
 
+  @ApiProperty({
+    description: '정렬 기준',
+    example: 'createdAt,DESC',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   sort?: string = 'createdAt,DESC';
 
+  @ApiProperty({
+    description: '상태 필터',
+    enum: Object.values(SubmissionStatus),
+    required: false,
+  })
+  @IsOptional()
   @IsOptional()
   @IsIn(Object.values(SubmissionStatus))
   status?: (typeof SubmissionStatus)[keyof typeof SubmissionStatus];
 
+  @ApiProperty({ description: '학생 ID', required: false })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   studentId?: number;
 
+  @ApiProperty({ description: '학생 이름', required: false })
   @IsOptional()
   @IsString()
   studentName?: string;
