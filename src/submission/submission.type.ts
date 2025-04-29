@@ -113,6 +113,16 @@ export function toLogIdProperties(
 
 export function toAiFeedBackType(chat: string): OFeedBackResultType {
   const lines = chat.split('\n');
+  if (lines.length < 2) {
+    throw new Error('Invalid AI feedback format');
+  }
+
+  const scorePart = lines[0].split(':');
+  const feedbackPart = lines[1].split(':');
+  if (scorePart.length < 2 || feedbackPart.length < 2) {
+    throw new Error('Invalid AI feedback format');
+  }
+
   const score = parseInt(lines[0].split(':')[1].trim());
   const feedback = lines[1].split(':')[1].trim();
   const highlights = lines.slice(2).map((line) => line.trim());
@@ -130,6 +140,7 @@ function isAiFeedBackType(obj: any): boolean {
     typeof obj === 'object' &&
     obj !== null &&
     typeof obj.score === 'number' &&
+    !Number.isNaN(obj.score) &&
     typeof obj.feedback === 'string' &&
     Array.isArray(obj.highlights) &&
     obj.highlights.every((item: any) => typeof item === 'string')
