@@ -21,7 +21,7 @@ services:
     depends_on:
       - postgres
     environment:
-      - DATABASE_URL==postgresql://postgres:postgres@feed-postgres:5432/feedback
+      - DATABASE_URL=postgresql://postgres:postgres@feed-postgres:5432/feedback
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
       - AZURE_ENDPINT_KEY=${AZURE_ENDPINT_KEY}
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
