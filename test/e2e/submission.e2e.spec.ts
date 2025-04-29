@@ -29,6 +29,11 @@ describe('Submissions E2E', () => {
     });
   });
 
+  beforeEach(async () => {
+    await prisma.submissions.deleteMany();
+    await prisma.students.deleteMany();
+  });
+
   afterAll(async () => {
     await prisma.submissions.deleteMany();
     await prisma.students.deleteMany();
@@ -36,7 +41,6 @@ describe('Submissions E2E', () => {
     await app.close();
   });
 
-  // ✅ 성공 케이스
   it('기본 조회 성공', async () => {
     const student = await createTestSetting(prisma);
     const tokenRequest = {
@@ -113,7 +117,6 @@ describe('Submissions E2E', () => {
     expect(res.body.data.length).toBeGreaterThan(0);
   });
 
-  // ❌ 실패 케이스
   it('토큰 없이 호출하면 401 Unauthorized 응답한다', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/submissions')
