@@ -1,85 +1,229 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AI Feedback Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> 학생 제출물(에세이) AI 자동 평가 서비스
+제출, 채점, 통계 집계, 재평가의 전체적인 플로우를 다루는 백엔드 시스템
+> 
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🛠️ 기술 스택
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| 항목 | 내용 |
+| --- | --- |
+| Framework | NestJS (v10) |
+| Language | TypeScript |
+| DB | PostgreSQL |
+| ORM | Prisma ORM |
+| Authentication | JWT Bearer 인증 |
+| API Docs | Swagger (OpenAPI 3.0) |
+| Scheduler | @nestjs/schedule, node-cron 기반 |
+| Containerization | Docker, Docker Compose |
+| Validation | class-validator, class-transformer |
+| Testing | Jest (Unit + E2E) + Supertest |
 
-## Project setup
+---
 
-```bash
-$ npm install
+## 🛤️ 전체 시스템 플로우
+
+```mermaid
+sequenceDiagram
+  actor Student
+  participant Server
+  participant AI
+
+  Student->>Server: 제출 요청
+  Server->>AI: AI 평가 요청
+  AI-->>Server: AI 응답
+  Server->>Server: 결과 가공 및 저장
+  Server-->>Student: 응답
+
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## 📄 ERD (DB 구조)
 
-# watch mode
-$ npm run start:dev
+```mermaid
+erDiagram
+	students ||--|{ submissions: submit
+	submission_component_type ||--|| submissions: component_type
+	submissions ||--|{ submission_media: media
+	submissions ||--|{ submission_logs: log
+	submissions ||--|{ revisions: revision
+	submissions ||--|| submissions_analysis: analysis
+	submissions_analysis ||--|{ analysis_highlights: highlights
+	submission_media ||--|| media_analysis: analysis
 
-# production mode
-$ npm run start:prod
+	students {
+		BIGINT id PK
+		VARCHAR name
+		TIMESTAMP created_at
+		TIMESTAMP updated_at
+		TIMESTAMP deleted_at
+	}
+	
+	submissions {
+		BIGINT id PK
+		BIGINT students_id FK
+		VARCHAR component_type FK 
+		VARCHAR status
+		TEXT submit_text
+		TIMESTAMP created_at
+		TIMESTAMP updated_at
+		TIMESTAMP deleted_at
+	}
+	
+	submission_component_type {
+		VARCHAR name
+	}
+
+	submissions_analysis {
+		BIGINT id PK
+		BIGINT submissions_id FK
+		INT score
+		TEXT feedback
+		TEXT highlight_submit_text
+		TIMESTAMP created_at
+	}
+	
+	analysis_highlights {
+		BIGINT id PK
+		BIGINT submissions_analysis_id FK
+		VARCHAR text
+		TIMESTAMP created_at
+	}
+	
+	submission_media {
+		BIGINT id PK
+		BIGINT submissions_id FK
+		VARCHAR type
+		VARCHAR url
+		TIMESTAMP created_at
+		TIMESTAMP deleted_at
+	}
+	
+	media_analysis {
+		BIGINT id PK
+		BIGINT submissions_media_id FK
+		TEXT result
+		TIMESTAMP created_at
+		TIMESTAMP deleted_at
+	}
+	
+	submission_logs {
+		BIGINT id PK
+		UUID trace_id
+		BIGINT user_id FK
+		BIGINT submissions_id FK
+		BOOLEAN is_success
+		INT latency
+		VARCHAR action
+		VARCHAR error_message
+		TIMESTAMP created_at
+	}
+	
+	revisions {
+		BIGINT id PK
+		BIGINT submissions_id FK
+		BOOLEAN is_success
+		TIMESTAMP created_at
+	}
+	
+	stats_daily {
+		BIGINT id PK
+		VARCHAR name
+		DATE date
+		INT success_cnt
+		INT failure_cnt
+		TIMESTAMP created_at
+	}
+	
+	stats_weekly {
+		BIGINT id PK
+		VARCHAR name
+		DATE start_date
+		DATE end_date
+		INT success_cnt
+		INT failure_cnt
+		TIMESTAMP created_at
+	}
+	
+	stats_monthly {
+		BIGINT id PK
+		VARCHAR name
+		DATE date
+		INT success_cnt
+		INT failure_cnt
+		TIMESTAMP created_at
+	}
+	
+	request_logs {
+		BIGINT id PK
+		BOOLEAN is_success
+		VARCHAR http_status
+		VARCHAR method
+		VARCHAR uri
+		VARCHAR ip_address
+		VARCHAR user_agent
+		TIMESTAMP created_at
+	}
 ```
 
-## Run tests
+**💡 주요 특징:**
+
+- `submission_logs`: 평가/재평가 로그
+- `request_logs`: 모든 HTTP 요청 로그 (middleware)
+- `stats` → 일간, 주간, 월간 테이블 분리 vs 통합
+    - 사용자 수가 적은 경우 하나로 관리해도 가능하나 많은 경우라고 가정해서 분리해서 적용
+    - 사용자 수가 많아 데이터가 많은 경우, 배치가 같은 시간대에 병렬로 동작, 추후 일간 데이터 파티셔닝을 고려해 테이블 분리로 결정
+- `media`: type으로 구분 -> 추후 분석 확장을 위해
+- `media_analysis` 테이블은 현재 사용X
+- `submission_logs` → 비즈니스 도메인 로그. 평가, 재평가 호출시 트레이싱
+    - request log에서 submission log를 1대 다를 통해 트레이싱하려 했으나, 구현상 request log가 미들웨어에서 적재되어 지금 설계에선 불가
+- `request_logs` → api 공통 로그
+
+---
+
+## 🧪 예외 처리 (Global Policy)
+
+- 모든 예외 -> **HTTP 200** + `{ result: "failed", message: "사유" }`
+- 서버 오류, Validation Error 모두 단일 형태
+- (TODO) 에러 발생시 알림 추가 구현 필요
+
+---
+
+## 🧐 테스트 방법
+
+### Test
 
 ```bash
-# unit tests
-$ npm run test
+# script 폴더에서 실행후
+$ ./dev-db-init.sh
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run test
 ```
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 💪 로컬 환경
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Docker-Compose 실행
+docker-compose up -d --build
 
-## Support
+# Docker-Compose 실행
+docker-compose down
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Swagger 접속
 
-## Stay in touch
+> http://localhost:3000/api
+> 
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 📅 참고
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- RequestLogging Middleware에서 requestLog DB 기록
+- AutoRetryScheduler로 평가 실패 재시도
+- Submission Status(PENDING/PROCESSING/COMPLETED/FAILED) 관리 차원
