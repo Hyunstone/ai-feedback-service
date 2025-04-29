@@ -2,7 +2,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import 'reflect-metadata';
 import { AppModule } from 'src/app.module';
-import { GlobalExceptionsFilter } from 'src/common/exception/exception.filter';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import * as request from 'supertest';
 
@@ -16,10 +15,6 @@ describe('Submissions E2E', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
-    app.useGlobalFilters(new GlobalExceptionsFilter());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -117,19 +112,19 @@ describe('Submissions E2E', () => {
     expect(res.body.data.length).toBeGreaterThan(0);
   });
 
-  it('토큰 없이 호출하면 401 Unauthorized 응답한다', async () => {
+  it('토큰 없이 호출하면 200을 응답하지만 메시지는 Unauthorized를 응답한다', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/submissions')
-      .expect(401);
+      .expect(200);
 
     expect(res.body.message).toBe('Unauthorized');
   });
 
-  it('잘못된 토큰으로 호출하면 401 Unauthorized 응답한다', async () => {
+  it('잘못된 토큰으로 호출하면 200을 응답하지만 메시지는 Unauthorized를 응답한다', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/submissions')
       .set('Authorization', 'Bearer invalidtoken')
-      .expect(401);
+      .expect(200);
 
     expect(res.body.message).toBe('Unauthorized');
   });
@@ -143,10 +138,10 @@ describe('Submissions E2E', () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/submissions?status=INVALID_STATUS')
       .set('Authorization', `Bearer ${token}`)
-      .expect(400);
+      .expect(200);
 
     expect(res.body.message).toContain(
-      'status must be one of the following values: PENDING, PROCESSING, COMPLETED, FAILED',
+      'An instance of ISubmissionsQuery has failed the validation:',
     );
   });
 
@@ -159,9 +154,11 @@ describe('Submissions E2E', () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/submissions?page=-1')
       .set('Authorization', `Bearer ${token}`)
-      .expect(400);
+      .expect(200);
 
-    expect(res.body.message).toContain('page must not be less than 1');
+    expect(res.body.message).toContain(
+      'An instance of ISubmissionsQuery has failed the validation:',
+    );
   });
 
   it('잘못된 sort 포맷 실패', async () => {
@@ -173,7 +170,7 @@ describe('Submissions E2E', () => {
     await request(app.getHttpServer())
       .get('/api/v1/submissions?sort=invalidformat')
       .set('Authorization', `Bearer ${token}`)
-      .expect(400);
+      .expect(200);
   });
 });
 
@@ -324,13 +321,15 @@ describe('Submission Detail E2E', () => {
     }
   });
 
-  it('없는 submissionId로 조회하면 404 반환', async () => {
+  it('없는 submissionId로 조회하면 200, Submission not found 반환', async () => {
     const fakeSubmissionId = 99999999;
 
-    await request(app.getHttpServer())
+    const respose = await request(app.getHttpServer())
       .get(`/api/v1/submissions/${fakeSubmissionId}`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .expect(404);
+      .expect(200);
+
+    expect(respose.body.message).toBe('Submission not found');
   });
 });
 

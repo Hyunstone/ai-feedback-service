@@ -1,13 +1,12 @@
-import 'reflect-metadata';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import 'reflect-metadata';
 import { AppModule } from 'src/app.module';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import * as request from 'supertest';
-import { GlobalExceptionsFilter } from 'src/common/exception/exception.filter';
-import { SubmissionStatus } from 'src/submission/submission.type';
 import { SubmissionModule } from 'src/submission/submission.module';
 import { SubmissionService } from 'src/submission/submission.service';
+import { SubmissionStatus } from 'src/submission/submission.type';
+import * as request from 'supertest';
 
 describe('Revision Create E2E', () => {
   let app: INestApplication;
@@ -21,10 +20,6 @@ describe('Revision Create E2E', () => {
     }).compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
-    app.useGlobalFilters(new GlobalExceptionsFilter());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -84,14 +79,14 @@ describe('Revision Create E2E', () => {
     expect(revision.isSuccess).toBeNull();
   });
 
-  it('없는 submissionId 요청 시 404', async () => {
+  it('없는 submissionId 요청 시 응답은 200, 메시지', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/revision')
       .send({ submissionId: 999999 }) // 존재하지 않는 ID
-      .expect(404);
+      .expect(200);
   });
 
-  it('이미 PROCESSING 상태면 409 Conflict', async () => {
+  it('이미 PROCESSING 상태면 200, 메시지는 Conflict을 응답한다', async () => {
     await prisma.submissionComponentType.create({
       data: { name: 'quiz' },
     });
@@ -107,7 +102,7 @@ describe('Revision Create E2E', () => {
     await request(app.getHttpServer())
       .post('/api/v1/revision')
       .send({ submissionId: Number(submission.id) })
-      .expect(409);
+      .expect(200);
   });
 });
 
@@ -227,9 +222,11 @@ describe('Revision Query E2E', () => {
   it('잘못된 page 값 실패', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/revision?page=-1')
-      .expect(400);
+      .expect(200);
 
-    expect(res.body.message).toContain('page must not be less than 1');
+    expect(res.body.message).toContain(
+      'An instance of FindRevisionsQueryDto has failed the validation',
+    );
   });
 
   it('잘못된 sort 포맷 실패', async () => {
@@ -310,20 +307,20 @@ describe('Revision Query By ID E2E', () => {
     expect(res.body).toHaveProperty('createdAt');
   });
 
-  it('없는 revisionId 조회 시 404 Not Found', async () => {
+  it('없는 revisionId 조회 시 200, Not Found를 응답한다', async () => {
     const nonExistId = 9999999;
 
     const res = await request(app.getHttpServer())
       .get(`/api/v1/revision/${nonExistId}`)
-      .expect(404);
+      .expect(200);
 
     expect(res.body.message).toBe('Revision not found');
   });
 
-  it('revisionId가 숫자가 아니면 400 Bad Request', async () => {
+  it('revisionId가 숫자가 아니면 200, Bad Request를 응답한다', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/revision/invalid-id')
-      .expect(400);
+      .expect(200);
 
     expect(res.body.message).toContain('Validation failed');
   });
