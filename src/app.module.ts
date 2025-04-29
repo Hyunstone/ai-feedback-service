@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SubmissionModule } from './submission/submission.module';
 import { AuthModule } from './auth/auth.module';
 import { RevisionModule } from './revision/revision.module';
+import { RequestLoggingMiddleware } from './common/logging/request-logging.middleware';
+import { PrismaService } from './common/prisma/prisma.service';
 
 @Module({
   imports: [
@@ -14,6 +16,10 @@ import { RevisionModule } from './revision/revision.module';
       envFilePath: ['.env.example'],
     }),
   ],
-  providers: [],
+  providers: [PrismaService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggingMiddleware).forRoutes('*');
+  }
+}
