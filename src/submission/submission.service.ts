@@ -14,10 +14,11 @@ import { highlightText } from 'src/common/util/string.util';
 import { processVideoFile } from 'src/common/video/video.util';
 import { SubmissionRepository } from './submission.repository';
 import {
-  AiFeedBackType,
+  IFeedbackRequest,
   ISubmission,
   ISubmissionsQuery,
   LogIdProperites,
+  OFeedBackResultType,
   toAiFeedBackType,
   toLogIdProperties,
 } from './submission.type';
@@ -60,39 +61,21 @@ export class SubmissionService {
         video,
       );
 
-      const feedbackResult = await this.chatFeedback(logIdProperites, request);
-      const highlightResult = highlightText(
-        request.submitText,
-        feedbackResult.highlights,
+      const evaluationResult = await this.evaluateSubmission(
+        submissionId,
+        logIdProperites,
       );
-
-      await this.repository.saveAnalysisResult({
-        submissionId,
-        score: feedbackResult.score,
-        feedback: feedbackResult.feedback,
-        highlightResult: highlightResult,
-        highlights: feedbackResult.highlights,
-      });
-
-      await this.repository.createSubmissionLog({
-        traceId,
-        studentId: request.studentId,
-        submissionId,
-        latency: Date.now() - start,
-        isSuccess: true,
-        action: 'evaluate',
-      });
 
       return serializedReturn({
         result: 'ok',
         message: null,
         studentId: request.studentId,
         studentName: request.studentName,
-        score: feedbackResult.score,
-        feedback: feedbackResult.feedback,
-        highlights: feedbackResult.highlights,
+        score: evaluationResult.feedbackResult.score,
+        feedback: evaluationResult.feedbackResult.feedback,
+        highlights: evaluationResult.feedbackResult.highlights,
         submitText: request.submitText,
-        highlighSubmitText: highlightResult,
+        highlighSubmitText: evaluationResult.highlightResult,
         mediaUrl: {
           video: videoUrl,
           audio: audioUrl,
@@ -106,6 +89,44 @@ export class SubmissionService {
         message: e.message,
       };
     }
+  }
+
+  async evaluateSubmission(
+    submissionId: number,
+    logIdProperites: LogIdProperites,
+  ) {
+    const submission = await this.repository.findSubmissionById(submissionId);
+    const request: IFeedbackRequest = {
+      componentType: submission.componentType,
+      submitText: submission.submitText,
+    };
+    const feedbackResult = await this.chatFeedback(logIdProperites, request);
+    const highlightResult = highlightText(
+      request.submitText,
+      feedbackResult.highlights,
+    );
+
+    await this.repository.saveAnalysisResult({
+      submissionId: logIdProperites.submissionId,
+      score: feedbackResult.score,
+      feedback: feedbackResult.feedback,
+      highlightResult: highlightResult,
+      highlights: feedbackResult.highlights,
+    });
+
+    await this.repository.createSubmissionLog({
+      traceId: logIdProperites.traceId,
+      studentId: Number(submission.studentId),
+      submissionId: logIdProperites.submissionId,
+      latency: Date.now() - logIdProperites.startTime,
+      isSuccess: true,
+      action: 'evaluate',
+    });
+
+    return {
+      feedbackResult,
+      highlightResult,
+    };
   }
 
   async findSubmissionResultsByQuery(query: ISubmissionsQuery) {
@@ -162,14 +183,14 @@ export class SubmissionService {
 
   protected async chatFeedback(
     logIdProperites: LogIdProperites,
-    request: ISubmission,
-  ): Promise<AiFeedBackType> {
+    request: IFeedbackRequest,
+  ): Promise<OFeedBackResultType> {
     // TODO: prompt 수정
     try {
       const chat = await this.openaiService.chat([
         {
           role: 'user',
-          content: `학생 ${request.studentId}의 ${request.componentType} 과제에 대한 평가를 요청합니다. ${request.submitText}`,
+          content: `${request.componentType} 과제에 대한 평가를 요청합니다. ${request.submitText}`,
         },
       ]);
       this.createSubmissionLog(logIdProperites, 'openAI');

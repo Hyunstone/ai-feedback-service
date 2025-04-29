@@ -9,5 +9,6 @@ import { RevisionController } from './revision.controller';
   imports: [SubmissionModule],
   controllers: [RevisionController],
   providers: [RevisionService, PrismaService, RevisionRepository],
+  exports: [RevisionRepository],
 })
 export class RevisionModule {}

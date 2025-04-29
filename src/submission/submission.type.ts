@@ -73,10 +73,21 @@ export interface FindSubmissionResultsParams {
   orderBy: Record<string, 'asc' | 'desc'>;
 }
 
-export interface AiFeedBackType {
+export interface IFeedbackRequest {
+  componentType: string;
+  submitText: string;
+}
+
+export interface OFeedBackResultType {
   score: number;
   feedback: string;
   highlights: string[];
+}
+
+export interface RevisionLogProperties {
+  traceId: string;
+  submissionId: number;
+  startTime: number;
 }
 
 export interface LogIdProperites {
@@ -100,7 +111,7 @@ export function toLogIdProperties(
   };
 }
 
-export function toAiFeedBackType(chat: string): AiFeedBackType {
+export function toAiFeedBackType(chat: string): OFeedBackResultType {
   const lines = chat.split('\n');
   const score = parseInt(lines[0].split(':')[1].trim());
   const feedback = lines[1].split(':')[1].trim();

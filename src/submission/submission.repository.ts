@@ -122,7 +122,13 @@ export class SubmissionRepository {
     });
   }
 
-  saveSubmission({
+  async findFailedSubmissions() {
+    return this.prisma.submissions.findMany({
+      where: { status: 'FAILED', deletedAt: null },
+    });
+  }
+
+  async saveSubmission({
     studentId,
     componentType,
     submitText,
@@ -141,7 +147,7 @@ export class SubmissionRepository {
     });
   }
 
-  saveAnalysisResult({
+  async saveAnalysisResult({
     submissionId,
     score,
     feedback,
@@ -180,7 +186,7 @@ export class SubmissionRepository {
     });
   }
 
-  createSubmissionLog({
+  async createSubmissionLog({
     traceId,
     studentId,
     submissionId,

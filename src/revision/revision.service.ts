@@ -7,13 +7,19 @@ import {
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { serializedReturn } from 'src/common/type/common.mapper';
 import { SubmissionRepository } from 'src/submission/submission.repository';
-import { SubmissionStatus } from 'src/submission/submission.type';
+import {
+  LogIdProperites,
+  SubmissionStatus,
+} from 'src/submission/submission.type';
 import { RevisionRepository } from './revision.repository';
 import { CreateRevisionDto, FindRevisionsQueryDto } from './revision.type';
+import { SubmissionService } from 'src/submission/submission.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class RevisionService {
   constructor(
+    private readonly submissionService: SubmissionService,
     private readonly submissionRepository: SubmissionRepository,
     private readonly revisionRepository: RevisionRepository,
     private readonly prisma: PrismaService,
@@ -21,6 +27,7 @@ export class RevisionService {
   private readonly logger = new Logger(RevisionService.name);
 
   async createRevision({ submissionId }: CreateRevisionDto) {
+    const traceId = uuidv4();
     const submission = await this.submissionRepository.findSubmissionById(
       Number(submissionId),
     );
@@ -33,13 +40,36 @@ export class RevisionService {
       throw new ConflictException('Submission is already being processed');
     }
     await this.prisma.$transaction(async (tx) => {
+      const submission = await this.submissionRepository.findSubmissionById(
+        Number(submissionId),
+      );
+      const logIdProperties: LogIdProperites = {
+        traceId,
+        studentId: Number(submission.studentId),
+        submissionId,
+        startTime: Date.now(),
+      };
+      await this.submissionService.evaluateSubmission(
+        Number(submission.id),
+        logIdProperties,
+      );
+
       await this.submissionRepository.updateSubmissionStatus(
         Number(submissionId),
         SubmissionStatus.PROCESSING,
         tx,
       );
-      await this.revisionRepository.createRevision(Number(submissionId), tx);
+      await this.revisionRepository.createRevision(
+        Number(submissionId),
+        null,
+        tx,
+      );
     });
+
+    await this.submissionRepository.updateSubmissionStatus(
+      Number(submissionId),
+      SubmissionStatus.COMPLETED,
+    );
   }
 
   async findAllRevisions(query: FindRevisionsQueryDto) {

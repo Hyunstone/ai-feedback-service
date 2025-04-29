@@ -8,12 +8,13 @@ export class RevisionRepository {
 
   async createRevision(
     submissionId: number,
+    isSuccess: boolean | null = null,
     tx: Prisma.TransactionClient = this.prisma,
   ) {
     return tx.revisions.create({
       data: {
         submissionId,
-        isSuccess: false,
+        isSuccess,
       },
     });
   }
