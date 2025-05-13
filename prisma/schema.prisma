@@ -1,0 +1,175 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Students {
+  id        BigInt    @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  submissions Submissions[]
+
+  @@map("students")
+}
+
+model Submissions {
+  id            BigInt    @id @default(autoincrement())
+  studentId     BigInt?   @map("students_id")
+  componentType String?   @map("component_type")
+  status        String?
+  submitText    String?   @map("submit_text")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  student       Students?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  component     SubmissionComponentType? @relation(fields: [componentType], references: [name])
+
+  media         SubmissionMedia[]
+  logs          SubmissionLogs[]
+  revisions     Revisions[]
+  analysis      SubmissionsAnalysis?
+
+  @@map("submissions")
+}
+
+model SubmissionComponentType {
+  name String @id
+
+  submissions Submissions[]
+
+  @@map("submission_component_type")
+}
+
+model SubmissionsAnalysis {
+  id                  BigInt   @id @default(autoincrement())
+  submissionId        BigInt?  @unique @map("submissions_id")
+  score               Int?
+  feedback            String?
+  highlightSubmitText String?  @map("highlight_submit_text")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  submission          Submissions? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  highlights          AnalysisHighlights[]
+
+  @@map("submissions_analysis")
+}
+
+model AnalysisHighlights {
+  id                   BigInt   @id @default(autoincrement())
+  submissionAnalysisId BigInt   @map("submissions_analysis_id")
+  text                 String
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  submissionAnalysis   SubmissionsAnalysis @relation(fields: [submissionAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("analysis_highlights")
+}
+
+model SubmissionMedia {
+  id           BigInt    @id @default(autoincrement())
+  submissionId BigInt    @map("submissions_id")
+  type         String?
+  url          String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  submission   Submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  analysis     MediaAnalysis?
+
+  @@map("submission_media")
+}
+
+model MediaAnalysis {
+  id                BigInt    @id @default(autoincrement())
+  submissionMediaId BigInt    @unique @map("submissions_media_id")
+  result            String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  submissionMedia   SubmissionMedia @relation(fields: [submissionMediaId], references: [id], onDelete: Cascade)
+
+  @@map("media_analysis")
+}
+
+model RequestLogs {
+  id         BigInt   @id @default(autoincrement())
+  isSuccess  Boolean? @map("is_success")
+  httpStatus Int?     @map("http_status")
+  latency    Int
+  method     String
+  uri        String
+  userAgent  String?  @map("user_agent")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("request_logs")
+}
+
+model SubmissionLogs {
+  id            BigInt    @id @default(autoincrement())
+  traceId       String    @db.Uuid @unique @map("trace_id")
+  studentId     BigInt?   @map("students_id")
+  submissionId  BigInt    @map("submissions_id")
+  isSuccess     Boolean?
+  latency       Int?
+  action        String?
+  errorMessage  String?   @map("error_message")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  submission    Submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("submission_logs")
+}
+
+model Revisions {
+  id           BigInt    @id @default(autoincrement())
+  submissionId BigInt    @map("submissions_id")
+  isSuccess    Boolean?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  submission   Submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("revisions")
+}
+
+model StatsDaily {
+  id          BigInt   @id @default(autoincrement())
+  name        String?
+  date        DateTime @db.Date
+  successCnt  Int?     @map("success_cnt")
+  failureCnt  Int?     @map("failure_cnt")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("stats_daily")
+}
+
+model StatsWeekly {
+  id          BigInt   @id @default(autoincrement())
+  name        String?
+  startDate   DateTime @db.Date @map("start_date")
+  endDate     DateTime @db.Date @map("end_date")
+  successCnt  Int?     @map("success_cnt")
+  failureCnt  Int?     @map("failure_cnt")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("stats_weekly")
+}
+
+model StatsMonthly {
+  id          BigInt   @id @default(autoincrement())
+  name        String?
+  date        DateTime @db.Date
+  successCnt  Int?     @map("success_cnt")
+  failureCnt  Int?     @map("failure_cnt")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("stats_monthly")
+}
